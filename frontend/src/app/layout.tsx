@@ -297,6 +297,8 @@ export default function RootLayout({
               <SkipToContent />
               <TopProgressBar />
               <SessionTimeoutBanner />
+              {/* Reconnect prompt on session expiry / external wallet disconnect — #1509 */}
+              <SessionExpiredModal />
               <NetworkMismatchBanner />
               <OfflineBanner />
               {/* Top utility nav — hidden when printing */}

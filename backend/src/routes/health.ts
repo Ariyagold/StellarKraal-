@@ -1,6 +1,5 @@
 /**
- * Deep health check route
- * GET /api/v1/health/deep
+ * Health check routes (closes #1536).
  *
  * Verifies DB connectivity, Soroban RPC reachability, and available disk space.
  * Excluded from JWT auth and rate-limit middleware — registered before those are applied.
@@ -153,10 +152,12 @@ async function checkEventListenerHealth(): Promise<boolean> {
 const healthRouter = Router();
 
 /**
- * GET /health
+ * GET /api/v1/health
  *
- * Aggregated health check for Docker / ECS health probes. Reports the status
- * of all critical dependencies with a per-component timeout.
+ * Structured dependency health check for Docker / ECS / Kubernetes probes.
+ * Reports status for each critical dependency with a 2-second per-component
+ * timeout. Returns 503 when any critical dependency (database or Soroban RPC)
+ * is unreachable (closes #1536).
  *
  * Returns 200 when all dependencies are healthy, 503 otherwise (issue #1536).
  *
@@ -164,23 +165,19 @@ const healthRouter = Router();
  * @returns 503 `{ status: "degraded" | "unhealthy", timestamp, uptime, version, components }`
  */
 healthRouter.get("/", async (_req: Request, res: Response) => {
-  const [dbHealthy, rpcHealthy, listenerHealthy] = await Promise.all([
+  const [dbHealthy, rpcHealthy] = await Promise.all([
     withTimeout(checkDbHealth),
     withTimeout(() => rpcClient.getHealth().then(() => true).catch(() => false)),
-    withTimeout(checkEventListenerHealth),
   ]);
 
-  const components = {
-    db: (dbHealthy ? "ok" : "degraded") as ComponentStatus,
-    rpc: (rpcHealthy ? "ok" : "degraded") as ComponentStatus,
-    eventListener: (listenerHealthy ? "ok" : "degraded") as ComponentStatus,
-  };
+  const database: ComponentStatus = dbHealthy ? "ok" : "degraded";
+  const sorobanRpc: ComponentStatus = rpcHealthy ? "ok" : "degraded";
 
-  const healthyCount = [dbHealthy, rpcHealthy, listenerHealthy].filter(Boolean).length;
+  type AggregatedStatus = "healthy" | "degraded" | "unhealthy";
   let status: AggregatedStatus;
-  if (healthyCount === 3) {
+  if (dbHealthy && rpcHealthy) {
     status = "healthy";
-  } else if (healthyCount === 0) {
+  } else if (!dbHealthy && !rpcHealthy) {
     status = "unhealthy";
   } else {
     status = "degraded";

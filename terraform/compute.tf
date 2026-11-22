@@ -150,8 +150,10 @@ resource "aws_ecs_service" "main" {
   name            = "stellarkraal-service-${var.environment}"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+  # desired_count is managed by Application Auto Scaling after initial provisioning.
+  # Minimum is 1 for staging, 2 for production to ensure availability (closes #1534).
+  desired_count = var.environment == "production" ? 2 : 1
+  launch_type   = "FARGATE"
 
   network_configuration {
     security_groups  = [aws_security_group.app.id]

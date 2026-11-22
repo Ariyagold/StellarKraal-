@@ -57,6 +57,28 @@ export const typeDefs = `#graphql
     status: LoanStatus
     health_factor: Float
     createdAt: DateTime!
+    """The borrower's profile, resolved via DataLoader to prevent N+1 queries."""
+    borrowerProfile: User
+  }
+
+  """A registered user / borrower profile."""
+  type User {
+    """Stellar public key — also acts as the unique user identifier."""
+    walletAddress: ID!
+    displayName: String
+    notificationPreferences: NotificationPreferences
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    """Active loans for this user, resolved via DataLoader."""
+    loans: [Loan!]!
+  }
+
+  """Per-event notification opt-in flags for a user."""
+  type NotificationPreferences {
+    loanApproved: Boolean
+    loanRepaid: Boolean
+    liquidationWarning: Boolean
+    loanDisbursed: Boolean
   }
 
   """Paginated list of loans (offset-based)."""

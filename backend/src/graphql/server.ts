@@ -1,8 +1,14 @@
 /**
  * Apollo Server v4 setup for StellarKraal GraphQL API v2 (ADR-011, issue #1537).
  *
- * Creates an Apollo Server instance and returns an Express-compatible
- * middleware using expressMiddleware from @apollo/server/express4.
+ * Mounts the GraphQL endpoint at /api/v2/graphql (closes #1537).
+ * Also keeps the legacy /graphql path for backward compatibility.
+ *
+ * Key features:
+ * - Schema-first SDL (typeDefs + resolvers)
+ * - JWT authentication context — userPublicKey extracted for every request
+ * - Per-request DataLoader instances to prevent N+1 queries on User/Loan joins
+ * - Apollo Sandbox in non-production environments for interactive exploration
  *
  * Changes for issue #1537:
  *  - Mounted at /api/v2/graphql in addition to the legacy /graphql path

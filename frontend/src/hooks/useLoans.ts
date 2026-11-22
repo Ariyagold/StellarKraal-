@@ -26,6 +26,8 @@ const LOANS_KEY = `${API}/api/loans`;
  * fresh data immediately (issue #1535).
  */
 export function useLoans(options?: { refreshInterval?: number }) {
+  const interval = options?.refreshInterval ?? DEFAULT_POLL_INTERVAL_MS;
+
   const { data, error, isLoading, mutate } = useSWR<Loan[] | LoansResponse>(LOANS_KEY, fetcher, {
     refreshInterval: options?.refreshInterval ?? 0,
     // Re-fetch when the tab regains focus — complements the interval so the

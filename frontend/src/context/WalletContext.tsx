@@ -42,6 +42,12 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface WalletContextValue extends WalletState {
+  /** The connected wallet's public key, or null when disconnected. */
+  publicKey: string | null;
+  /** True when a wallet is connected. */
+  isConnected: boolean;
+  /** The active Stellar network (e.g. "PUBLIC", "TESTNET"), or null. */
+  network: string | null;
   /** True when a wallet address is present (user is connected). */
   isAuthenticated: boolean;
   /** True when the Freighter browser extension is available. */
@@ -241,6 +247,46 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
+   * Poll Freighter while connected to detect:
+   *  - the extension being locked / disconnected (clears context state)
+   *  - a network change (updates `network`)
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!wallet.address) return;
+
+    let cancelled = false;
+
+    const tick = async () => {
+      const result = await probeFreighter();
+      if (cancelled) return;
+
+      if (!result.connected) {
+        // Freighter locked or disconnected — clear context state.
+        walletRef.current.disconnect();
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem(STORAGE_KEY);
+        }
+        setNetwork(null);
+        return;
+      }
+
+      setNetwork((prev) => (prev === result.network ? prev : result.network));
+    };
+
+    // Probe immediately, then on an interval.
+    void tick();
+    const id = window.setInterval(() => {
+      void tick();
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [wallet.address]);
+
+  /**
    * Connect flow:
    * 1. Verify the extension is present (prompt install otherwise)
    * 2. Request permission + public key from Freighter
@@ -288,6 +334,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
+    setNetwork(null);
     clearSessionCookie();
     setConnectionLost(false);
     setReconnectError(null);
@@ -337,6 +384,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<WalletContextValue>(
     () => ({
       ...wallet,
+      publicKey,
+      isConnected,
+      network,
       isAuthenticated,
       isFreighterInstalled,
       isConnecting,
@@ -352,6 +402,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       wallet,
+      publicKey,
+      isConnected,
+      network,
       isAuthenticated,
       isFreighterInstalled,
       isConnecting,

@@ -20,6 +20,7 @@ import Card from '@/components/Card';
 import ScrollToTopButton from '@/components/ScrollToTopButton';
 import Spinner from '@/components/Spinner';
 import Pagination from '@/components/Pagination';
+import EmptyState from '@/components/EmptyState';
 import { usePaginationParams } from '@/hooks/usePagination';
 import { badgeVariants } from '@/lib/animations';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
@@ -376,7 +377,7 @@ function LoanListContent() {
   );
 
   // Filter state from URL
-  const { filters, debouncedQuery, clearAll } = useSearchFilter();
+  const { filters, debouncedQuery, clearAll, hasActiveFilters } = useSearchFilter();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -448,9 +449,30 @@ function LoanListContent() {
           {t('loans.loading', 'Loading…')}
         </p>
       ) : sorted.length === 0 ? (
-        <p className="text-brown/60 text-sm" role="status" aria-live="polite">
-          {t('loans.noResults', 'No loans match your filters.')}
-        </p>
+        hasActiveFilters ? (
+          <EmptyState
+            illustration="loans"
+            title={t('loans.noResults', 'No loans match your filters.')}
+            description={t(
+              'loans.noResultsHint',
+              'Try adjusting your search or filters to see more loans.'
+            )}
+            isFiltered
+            onClearFilters={clearAll}
+          />
+        ) : (
+          <EmptyState
+            illustration="loans"
+            title={t('loans.emptyTitle', 'No Loans Yet')}
+            description={t(
+              'loans.emptyDescription',
+              'You have not requested any loans yet. Request your first loan to get started.'
+            )}
+            ctaLabel={t('loans.firstLoanCta', 'Request Your First Loan')}
+            ctaAlias={t('loans.requestLoan', 'Request a Loan')}
+            onCta={() => router.push('/borrow')}
+          />
+        )
       ) : (
         <div
           aria-busy={loading}
